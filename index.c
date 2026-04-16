@@ -220,5 +220,17 @@ int index_add(Index *index, const char *path) {
     char hex[HASH_HEX_SIZE + 1];
     hash_to_hex(&id, hex);
 
-    free(data);
+    free(data); 
+    struct stat st;
+    stat(path, &st);
+
+    IndexEntry *e = &idx->entries[idx->count++];
+
+    e->mode = 100644;
+    strcpy(e->hash_hex, hex);
+    e->mtime = st.st_mtime;
+    e->size = size;
+    strcpy(e->path, path);
+
+    return 0;
 }
