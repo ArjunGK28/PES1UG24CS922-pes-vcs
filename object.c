@@ -226,4 +226,18 @@ if (!data) {
 
 *data = '\0';
 data++;
+
+char type_str[16];
+if (sscanf(buf, "%s %zu", type_str, len_out) != 2) {
+    free(buf);
+    return -1;
+}
+
+if (strcmp(type_str, "blob") == 0) *type_out = OBJ_BLOB;
+else if (strcmp(type_str, "tree") == 0) *type_out = OBJ_TREE;
+else if (strcmp(type_str, "commit") == 0) *type_out = OBJ_COMMIT;
+else {
+    free(buf);
+    return -1;
+}
 }
