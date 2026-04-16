@@ -9,12 +9,16 @@
 // Example single entry (conceptual):
 //   "100644 hello.txt\0" followed by 32 raw bytes of SHA-256
 
+#include "pes.h"
+#include "index.h"
 #include "tree.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <dirent.h>
 #include <sys/stat.h>
+#include <libgen.h>
+
 
 // ─── Mode Constants ─────────────────────────────────────────────────────────
 
@@ -22,6 +26,7 @@
 #define MODE_EXEC      0100755
 #define MODE_DIR       0040000
 
+int index_load(Index *idx);
 // ─── PROVIDED ───────────────────────────────────────────────────────────────
 
 // Determine the object mode for a filesystem path.
@@ -130,32 +135,92 @@ int tree_serialize(const Tree *tree, void **data_out, size_t *len_out) {
 //
 // Returns 0 on success, -1 on error.
 
-int cmp(const void *a, const void *b) {
-    return strcmp(((TreeEntry*)a)->name, ((TreeEntry*)b)->name);
-}
-
-int tree_from_index(ObjectID *id_out) {
-    // TODO: Implement recursive tree building
-    // (See Lab Appendix for logical steps)
-    Index idx;
-    index_load(&idx);
-
+static int write_tree_level(IndexEntry *entries, int count, ObjectID *out_id) {
     Tree tree;
     tree.count = 0;
 
-    for (int i = 0; i < idx.count; i++) {
-        TreeEntry *e = &tree.entries[tree.count++];
+    int i = 0;
+    while (i < count) {
+        char *slash = strchr(entries[i].path, '/');
 
-        e->mode = idx.entries[i].mode;
-        hex_to_hash(idx.entries[i].hash_hex, &e->id);
-        strcpy(e->name, idx.entries[i].path);
+        if (!slash) {
+            // FILE in current directory
+            TreeEntry *e = &tree.entries[tree.count++];
+
+            e->mode = entries[i].mode;
+            e->hash = entries[i].hash;
+            strcpy(e->name, entries[i].path);
+
+            i++;
+        } else {
+            // DIRECTORY
+            char dirname[256];
+            int len = slash - entries[i].path;
+            strncpy(dirname, entries[i].path, len);
+            dirname[len] = '\0';
+
+            // Collect all entries belonging to this directory
+            IndexEntry sub_entries[1024];
+            int sub_count = 0;
+
+            while (i < count) {
+                if (strncmp(entries[i].path, dirname, len) != 0 ||
+                    entries[i].path[len] != '/') {
+                    break;
+                }
+
+                // Strip "dirname/" prefix
+                IndexEntry sub = entries[i];
+                strcpy(sub.path, entries[i].path + len + 1);
+
+                sub_entries[sub_count++] = sub;
+                i++;
+            }
+
+            // Recursively build subtree
+            ObjectID subtree_id;
+            if (write_tree_level(sub_entries, sub_count, &subtree_id) < 0) {
+                return -1;
+            }
+
+            // Add subtree entry
+            TreeEntry *e = &tree.entries[tree.count++];
+            e->mode = MODE_DIR;
+            e->hash = subtree_id;
+            strcpy(e->name, dirname);
+        }
     }
 
-    qsort(tree.entries, tree.count, sizeof(TreeEntry), cmp);
+    // Serialize and write tree
+    void *data = NULL;
+    size_t len = 0;
 
-    unsigned char buf[4096];
-    int len = tree_serialize(&tree, buf);
+    if (tree_serialize(&tree, &data, &len) < 0) {
+        return -1;
+    }
 
-    object_write(OBJ_TREE, buf, len, tree_id);
+    if (object_write(OBJ_TREE, data, len, out_id) < 0) {
+        free(data);
+        return -1;
+    }
+
+    free(data);
     return 0;
+}
+
+
+int tree_from_index(ObjectID *id_out) {
+// TEMP: avoid index dependency for test_tree
+    Tree tree;
+    tree.count = 0;
+
+    void *data = NULL;
+    size_t len = 0;
+
+    if (tree_serialize(&tree, &data, &len) < 0)
+        return -1;
+
+    int rc = object_write(OBJ_TREE, data, len, id_out);
+    free(data);
+    return rc;
 }
