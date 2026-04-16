@@ -210,5 +210,20 @@ if (read(fd, buf, st.st_size) != st.st_size) {
 
 close(fd);
 
+ObjectID check;
+compute_hash(buf, st.st_size, &check);
 
+if (memcmp(check.hash, id->hash, HASH_SIZE) != 0) {
+    free(buf);
+    return -1;
+}
+
+char *data = memchr(buf, '\0', st.st_size);
+if (!data) {
+    free(buf);
+    return -1;
+}
+
+*data = '\0';
+data++;
 }
