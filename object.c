@@ -106,59 +106,58 @@ int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out
 
     size_t total_len = header_len + len;
 
-	unsigned char *buf = malloc(total_len);
-	if (!buf) return -1;
+    unsigned char *buf = malloc(total_len);
+    if (!buf) return -1;
 
-	memcpy(buf, header, header_len);
-	memcpy(buf + header_len, data, len);
+    memcpy(buf, header, header_len);
+    memcpy(buf + header_len, data, len);
 
-	compute_hash(buf, total_len, id_out);
+    compute_hash(buf, total_len, id_out);
 
-	if (object_exists(id_out)) {
-	    free(buf);
-	    return 0;
-	}
-	
-	char path[512];
-	object_path(id_out, path, sizeof(path));
+    if (object_exists(id_out)) {
+        free(buf);
+        return 0;
+    }
 
-	char dir[512];
-	strncpy(dir, path, sizeof(dir));
-	char *slash = strrchr(dir, '/');
-	if (slash) {
-	    *slash = '\0';
-	    mkdir(dir, 0755);
-	}
+    char path[512];
+    object_path(id_out, path, sizeof(path));
 
-	char tmp[512];
-	snprintf(tmp, sizeof(tmp), "%s.tmp", path);
+    char dir[512];
+    strncpy(dir, path, sizeof(dir));
+    char *slash = strrchr(dir, '/');
+    if (slash) {
+        *slash = '\0';
+        mkdir(dir, 0755);
+    }
 
-	int fd = open(tmp, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-	if (fd < 0) {
-	    free(buf);
-	    return -1;
-	}
+    char tmp[512];
+    snprintf(tmp, sizeof(tmp), "%s.tmp", path);
 
-	if (write(fd, buf, total_len) != total_len) {
-	    close(fd);
-	    free(buf);
-	    return -1;
-	}
+    int fd = open(tmp, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (fd < 0) {
+        free(buf);
+        return -1;
+    }
 
-	fsync(fd);
-	close(fd); 
-	rename(tmp, path);
+    if (write(fd, buf, total_len) != total_len) {
+        close(fd);
+        free(buf);
+        return -1;
+    }
 
-	int dir_fd = open(dir, O_RDONLY);
-	if (dir_fd >= 0) {
-	    fsync(dir_fd);
-	    close(dir_fd);
-	}
+    fsync(fd);
+    close(fd);
 
-	free(buf);
-return 0;
+    rename(tmp, path);
 
-    return -1;
+    int dir_fd = open(dir, O_RDONLY);
+    if (dir_fd >= 0) {
+        fsync(dir_fd);
+        close(dir_fd);
+    }
+
+    free(buf);
+    return 0;
 }
 
 // Read an object from the store.
