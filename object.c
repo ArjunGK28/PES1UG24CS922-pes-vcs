@@ -146,7 +146,17 @@ int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out
 	}
 
 	fsync(fd);
-	close(fd);
+	close(fd); 
+	rename(tmp, path);
+
+	int dir_fd = open(dir, O_RDONLY);
+	if (dir_fd >= 0) {
+	    fsync(dir_fd);
+	    close(dir_fd);
+	}
+
+	free(buf);
+return 0;
 
     return -1;
 }
