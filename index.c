@@ -231,6 +231,14 @@ int index_add(Index *index, const char *path) {
     e->mtime = st.st_mtime;
     e->size = size;
     strcpy(e->path, path);
+    
+    
+    for (int i = 0; i < idx->count; i++) {
+    if (strcmp(idx->entries[i].path, path) == 0) {
+        strcpy(idx->entries[i].hash_hex, hex);
+        return 0;
+    }
+}
 
     return 0;
 }
