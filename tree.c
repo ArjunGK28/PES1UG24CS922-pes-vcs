@@ -145,6 +145,9 @@ for (int i = 0; i < idx.count; i++) {
     strcpy(e->name, idx.entries[i].path);
 }
 
+unsigned char buf[4096];
+int len = tree_serialize(&tree, buf);
+
     (void)tree_id;
     return -1;
 }
