@@ -185,52 +185,52 @@ int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out
 int object_read(const ObjectID *id, ObjectType *type_out, void **data_out, size_t *len_out) {
     // TODO: Implement
     char path[512];
-object_path(id, path, sizeof(path));
+	object_path(id, path, sizeof(path));
 
-int fd = open(path, O_RDONLY);
-if (fd < 0) return -1;
+	int fd = open(path, O_RDONLY);
+	if (fd < 0) return -1;
 
-struct stat st;
-if (fstat(fd, &st) < 0) {
-    close(fd);
-    return -1;
-}
+	struct stat st;
+	if (fstat(fd, &st) < 0) {
+	    close(fd);
+	    return -1;
+	}
 
-char *buf = malloc(st.st_size);
-if (!buf) {
-    close(fd);
-    return -1;
-}
+	char *buf = malloc(st.st_size);
+	if (!buf) {
+	    close(fd);
+	    return -1;
+	}
 
-if (read(fd, buf, st.st_size) != st.st_size) {
-    free(buf);
-    close(fd);
-    return -1;
-}
+	if (read(fd, buf, st.st_size) != st.st_size) {
+	    free(buf);
+	    close(fd);
+	    return -1;
+	}
 
-close(fd);
+	close(fd);
 
-ObjectID check;
-compute_hash(buf, st.st_size, &check);
+	ObjectID check;
+	compute_hash(buf, st.st_size, &check);
 
-if (memcmp(check.hash, id->hash, HASH_SIZE) != 0) {
-    free(buf);
-    return -1;
-}
+	if (memcmp(check.hash, id->hash, HASH_SIZE) != 0) {
+	    free(buf);
+	    return -1;
+	}
 
-char *data = memchr(buf, '\0', st.st_size);
-if (!data) {
-    free(buf);
-    return -1;
-}
+	char *data = memchr(buf, '\0', st.st_size);
+	if (!data) {
+	    free(buf);
+	    return -1;
+	}
 
-*data = '\0';
-data++;
+	*data = '\0';
+	data++;
 
-char type_str[16];
-if (sscanf(buf, "%s %zu", type_str, len_out) != 2) {
-    free(buf);
-    return -1;
+	char type_str[16];
+	if (sscanf(buf, "%s %zu", type_str, len_out) != 2) {
+	free(buf);
+	return -1;
 }
 
 if (strcmp(type_str, "blob") == 0) *type_out = OBJ_BLOB;
@@ -240,4 +240,15 @@ else {
     free(buf);
     return -1;
 }
+
+*data_out = malloc(*len_out);
+if (!(*data_out)) {
+    free(buf);
+    return -1;
+}
+
+memcpy(*data_out, data, *len_out);
+
+free(buf);
+return 0;
 }
