@@ -133,7 +133,17 @@ int tree_from_index(ObjectID *id_out) {
     // TODO: Implement recursive tree building
     // (See Lab Appendix for logical steps)
     Index idx;
-    index_load(&idx);
+    index_load(&idx); 
+    Tree tree;
+tree.count = 0;
+
+for (int i = 0; i < idx.count; i++) {
+    TreeEntry *e = &tree.entries[tree.count++];
+
+    e->mode = idx.entries[i].mode;
+    hex_to_hash(idx.entries[i].hash_hex, &e->id);
+    strcpy(e->name, idx.entries[i].path);
+}
 
     (void)tree_id;
     return -1;
