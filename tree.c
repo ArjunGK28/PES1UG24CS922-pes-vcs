@@ -129,25 +129,33 @@ int tree_serialize(const Tree *tree, void **data_out, size_t *len_out) {
 //   - object_write    : save that binary buffer to the store as OBJ_TREE
 //
 // Returns 0 on success, -1 on error.
+
+int cmp(const void *a, const void *b) {
+    return strcmp(((TreeEntry*)a)->name, ((TreeEntry*)b)->name);
+}
+
 int tree_from_index(ObjectID *id_out) {
     // TODO: Implement recursive tree building
     // (See Lab Appendix for logical steps)
     Index idx;
-    index_load(&idx); 
+    index_load(&idx);
+
     Tree tree;
-tree.count = 0;
+    tree.count = 0;
 
-for (int i = 0; i < idx.count; i++) {
-    TreeEntry *e = &tree.entries[tree.count++];
+    for (int i = 0; i < idx.count; i++) {
+        TreeEntry *e = &tree.entries[tree.count++];
 
-    e->mode = idx.entries[i].mode;
-    hex_to_hash(idx.entries[i].hash_hex, &e->id);
-    strcpy(e->name, idx.entries[i].path);
-}
+        e->mode = idx.entries[i].mode;
+        hex_to_hash(idx.entries[i].hash_hex, &e->id);
+        strcpy(e->name, idx.entries[i].path);
+    }
 
-unsigned char buf[4096];
-int len = tree_serialize(&tree, buf);
+    qsort(tree.entries, tree.count, sizeof(TreeEntry), cmp);
 
-    (void)tree_id;
-    return -1;
+    unsigned char buf[4096];
+    int len = tree_serialize(&tree, buf);
+
+    object_write(OBJ_TREE, buf, len, tree_id);
+    return 0;
 }
