@@ -196,10 +196,15 @@ int head_update(const ObjectID *new_commit) {
 int commit_create(const char *message, ObjectID *commit_id_out) {
     // TODO: Implement commit creation
     // (See Lab Appendix for logical steps)
+     // 1. Create tree from index
     ObjectID tree_id;
     if (tree_from_index(&tree_id) != 0) return -1;
+
+    // 2. Read parent
     ObjectID parent_id;
     int has_parent = (head_read(&parent_id) == 0);
+
+    // 3. Build commit content
     char buffer[1024];
     int len = 0;
 
@@ -218,12 +223,12 @@ int commit_create(const char *message, ObjectID *commit_id_out) {
     len += sprintf(buffer + len, "author %s\n\n", author);
     len += sprintf(buffer + len, "%s\n", message);
 
-    // 4. Write commit object
-    if (object_write(OBJ_COMMIT, buffer, len, out_id) != 0)
+    // 4. Write commit
+    if (object_write(OBJ_COMMIT, buffer, len, commit_id_out) != 0)
         return -1;
 
     // 5. Update HEAD
-    if (head_update(out_id) != 0)
+    if (head_update(commit_id_out) != 0)
         return -1;
 
     return 0;
